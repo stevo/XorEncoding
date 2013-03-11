@@ -1,0 +1,183 @@
+:::::::::::::::::::::::: XOR ENCODER :::::::::::::::::::::::::::::
+                             by
+                    B³a¿ej "Stevo" Kosmowski
+
+
+1. Overview
+2. Installation
+3. Coding/Decoding Files
+4. Project Contenents
+5. Context Menu Implemenation
+6. Main Application
+
+
+
+
+
+1. Overview
+ 
+   Xorenc is a simple application developed for encoding all kinds of files
+using XOR encoding method. As it is a symmetric encoding routine, you can use
+the same appl. both for encoding and decoding files.
+
+2. Installation 
+
+   Main programm instalation is rather simple - all you need to do is just copy directory
+with application somewhere onto hdd and then launch the executable. If you want to use
+context menu then whole procedure is more complicated as you need to:
+  - Launch Delphi and open xormenu.dpr project
+  - Compile it
+  - Choose Run/Register ActiveX Server
+  - If averything goes well you should gain "Successfuly registered ActiveX Server..." or something like that :-)
+  - Then you can enjoy context menu on right-clicking .txt and .xor files ;)
+
+3. Coding/Decoding Files
+
+   There are few steps in order to encode/decode file
+    1.1 Launch xorenc.exe and choose file to be encoded/decoded
+    (you can encode/decode any file you want. Program was tested by enc/dec file which had 3,7 GB. 
+     On 2Ghz/256Mb/80GB ATA133 it took 7minutes to encode it)
+
+    1.2 Right-click on .txt or .xor file to be encoded/decoded
+    2   Fill both password labels
+    2.1 If you want the source file to be deleted after encoding/decoding then check the proper check box on the
+        bottom of the window  
+    3   Hit ok and, if needed, confirm overwriting/removing files.
+    4   Voila! It's done!
+
+4. Whole Project contains with following files:
+
+cm.pas - Context menu registration routines - big thanks for Xavier Pacheco and Steve Teixeira
+         for applying this code into their Delphi 6 VP book. I've slightly adopted it to my program
+	 and it works :-). But on the next release of mentioned book they need to explain it more clearly :-(
+xorenc.dpr - Main project file that contain's also file opening routines.
+
+Unit1.pas - Main encoder routines
+
+xor.jpg - :-D
+
+etc...
+
+5. Context Menu Implemenation
+
+***   xormenu is a dll registering routine that adds new item to context menu of .txt and .xor files
+   
+__________________________________
+
+InsertMenu (Menu, FMenuIdx, MF_STRING or MF_BYPOSITION, idCmdFirst,
+    'Encode Using XOR');
+__________________________________
+
+***   it is also very important to add the proper keys into system registry, supporting application handler
+
+__________________________________
+ CreateRegKey('.xor', '', 'XorEncodedFile');
+   CreateRegKey('txtfile\shellex\ContextMenuHandlers\' +
+      ClassName, '', ClsID);
+   CreateRegKey('XorEncodedFile\shellex\ContextMenuHandlers\' +
+      ClassName, '', ClsID);
+__________________________________
+
+6. Main Application 
+
+	AND NOW MAIN APPLICATION FUNCTIONS
+
+___________________________________
+Function TPswdForm.XorChar(a : Char; psswd : String; pos : Integer) : Char;
+var temp : Char;
+BEGIN
+ temp:=psswd[pos];
+  Result:=Chr(Ord(a) XOR Ord(temp));
+END;
+___________________________________
+Code above Xors characters code with the proper code of password's character defined by "pos"
+
+
+___________________________________
+ While pos<size DO
+  BEGIN
+   source.ReadBuffer(buffer,1);   //Reads data byte by byte from file
+    buffer:=XorChar(buffer, password, (pos mod pwdlen) ); //Encodes it on the fly, repeating the password...
+     destination.WriteBuffer(buffer,1); //Writes encoded data byte by byte to file
+      Inc(pos);
+  END;
+__________________________________
+Code above is the main loop encoding file character - char by char until it reaches eof (size)
+
+__________________________________
+If FileExists(output) THEN    {This block manages opening file }
+    BEGIN
+     WITH Application DO
+      If MessageBox('Output file with specified name already exist. Overwrite?', 'Overwrite?', mb_OkCancel)=IdCancel THEN
+       Application.Terminate ELSE
+
+         FileAttributes := FileGetAttr(output);
+          if FileAttributes=-1 THEN
+            BEGIN
+             MessageDlg('Unable to access output file due to application unhnadled exception', mtError, [mbOK], 0);
+            END ELSE
+          IF FileAttributes AND faReadOnly <> 0 then
+           BEGIN
+            If Application.MessageBox('File is Read-Only! Do you want to change it to read/write?','File is Read-Only',mb_OkCancel)=IdCancel THEN
+             Application.Terminate ELSE FileSetAttr(output,  FileAttributes + faReadOnly);
+              WriteMode:=fmOpenWrite;
+           END ELSE WriteMode:=fmOpenWrite;
+        END ELSE WriteMode:=fmCreate;
+___________________________________
+This is sample code for dealing with file exceptions f.e. file is read only/doesn't exist and so on.
+
+___________________________________
+begin
+if ParamCount = 0 then  // If there are no parameters, then execute OpenFile Dialog
+  begin
+
+    with TOpenDialog.Create(nil) do
+    try
+      DefaultExt := '.txt';
+       if Execute then //Execute TOpenDialog
+
+      Begin
+       input:=Filename;      //Get FileName into input Variable
+
+          If input='' THEN Application.Terminate;  //Define proper extension
+            If copy(input,Length(input)-2,3)='xor' THEN
+                output:=copy(input,1,Length(input)-4) ELSE
+                output:=input+'.xor';
+       end;
+
+    finally
+      Free;  //Free OpenDialog Instance
+
+    end;
+  end
+  //If there are parameters - assume that the first one is the file to encode
+  else begin
+    //ShowMessage('Params are here :-D');
+    for I := 1 to ParamCount do
+     begin
+      if input <> '' then input := input + ' ';  //Get a little space between program executable and param name :)
+      input := input + ParamStr(I);
+
+       If copy(input,Length(input)-2,3)='xor' THEN
+        output:=copy(input,1,Length(input)-4) ELSE
+         output:=input+'.xor';
+        end;
+  end;
+_______________________________________
+This code deals with both situations - launching app by xorenc.exe or choosing "Encode using XOR"
+from context menu :-)))
+
+
+
+
+Application can deal with some basic errors like probelms with openining/writing to files...
+
+
+         EOF
+
+
+
+
+
+
+   
